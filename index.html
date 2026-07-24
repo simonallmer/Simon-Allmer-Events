@@ -1166,40 +1166,47 @@ document.getElementById('z-out').addEventListener('click', () => map.zoomOut());
 // ─────────────────────────────────────────────────────────
 // JOURNEY PATH
 // ─────────────────────────────────────────────────────────
-// Vienna → arc north → Augsburg  (chronological west-bound travel)
-const pathPts = [
-  [48.2364, 16.4128], // Vienna
-  [49.05,   14.15],   // gentle northward arc
-  [48.7,    12.2],    // second arc point
-  [48.3386, 10.8955], // Augsburg
-];
+// A single gold trail links the events the tour still has ahead of it,
+// drawn straight from one stop to the next in date order. Past events are
+// left off the line, and a lone remaining stop draws nothing.
+let journeyBase = null;   // dim underline
+let journeyDash = null;   // animated gold dashes
 
-// Dim solid underline
-L.polyline(pathPts, {
-  color:        'rgba(255,255,255,0.07)',
-  weight:       1.5,
-  smoothFactor: 2,
-  interactive:  false,
-}).addTo(map);
+function drawJourney() {
+  // Remove any previous line so redraws don't stack.
+  if (journeyBase) { journeyBase.remove(); journeyBase = null; }
+  if (journeyDash) { journeyDash.remove(); journeyDash = null; }
 
-// Animated dashes
-const animLine = L.polyline(pathPts, {
-  color:        'rgba(200,169,110,0.55)',
-  weight:       1.2,
-  dashArray:    '6 16',
-  smoothFactor: 2,
-  interactive:  false,
-}).addTo(map);
+  const stops = EVENTS
+    .filter(e => e.status !== 'past')
+    .sort((a, b) => a.startDate - b.startDate)
+    .map(e => e.coords);
 
-// Apply CSS animation once the SVG path element exists
-function applyLineAnim() {
-  if (animLine._path) {
-    animLine._path.style.animation = 'journeyDash 1.6s linear infinite';
-  } else {
-    setTimeout(applyLineAnim, 100);
-  }
+  if (stops.length < 2) return; // nothing to connect
+
+  journeyBase = L.polyline(stops, {
+    color:       'rgba(255,255,255,0.07)',
+    weight:      1.5,
+    interactive: false,
+  }).addTo(map);
+
+  journeyDash = L.polyline(stops, {
+    color:       'rgba(200,169,110,0.55)',
+    weight:      1.2,
+    dashArray:   '6 16',
+    interactive: false,
+  }).addTo(map);
+
+  // Animate the dashes once the SVG path element exists.
+  (function animate() {
+    if (journeyDash && journeyDash._path) {
+      journeyDash._path.style.animation = 'journeyDash 1.6s linear infinite';
+    } else if (journeyDash) {
+      setTimeout(animate, 100);
+    }
+  })();
 }
-applyLineAnim();
+drawJourney();
 
 // ─────────────────────────────────────────────────────────
 // MARKERS
