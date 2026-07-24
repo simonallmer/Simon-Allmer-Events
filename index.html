@@ -601,7 +601,10 @@
     .cal-opt:hover { background: var(--surf); color: var(--text); }
 
     /* ── LEAFLET OVERRIDES ───────────────────────── */
-    .leaflet-container { background: #000 !important; }
+    .leaflet-container { background: #0b0b0b !important; }
+    /* Lift the dark CARTO tiles so land, borders and labels stay legible
+       on dimmer screens, without abandoning the dark theme. */
+    .leaflet-tile { filter: brightness(1.85) contrast(0.92); }
     .leaflet-control-zoom { display: none !important; }
     .leaflet-control-attribution {
       background: rgba(0,0,0,0.55) !important;
