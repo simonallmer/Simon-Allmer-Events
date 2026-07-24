@@ -171,6 +171,21 @@
     .ev-item:hover { background: var(--surf); }
     .ev-item.active { background: var(--surf-2); }
 
+    /* past (completed) events read dimmer */
+    .ev-item.is-past { opacity: 0.48; }
+    .ev-item.is-past:hover { opacity: 0.72; }
+
+    /* "Past Events" section header in the sidebar list */
+    .sb-section-label {
+      padding: 20px 28px 10px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--text-c);
+      border-bottom: 1px solid var(--border);
+    }
+
     /* gold left accent for next event */
     .ev-item.is-next::before {
       content: '';
@@ -189,6 +204,8 @@
       margin-bottom: 8px;
       display: block;
     }
+
+    .ev-badge.past { color: var(--text-b); }
 
     .ev-date {
       font-size: 10px;
@@ -950,7 +967,91 @@ const EVENTS = [
     unveiling:   ['Futory Cards Duality'],
     status:      'upcoming',
   },
+  {
+    id:          'combofestival',
+    name:        'COMBO FESTIVAL',
+    subtitle:    'Milan',
+    city:        'Milan',
+    country:     'Italy',
+    flag:        '🇮🇹',
+    startDate:   new Date(2026, 9, 3, 10, 0),  // Oct 3 10:00
+    endDate:     new Date(2026, 9, 4, 18, 0),  // Oct 4 18:00
+    dateLabel:   'October 3–4, 2026',
+    hours:       'Sat–Sun · Check official site for hours',
+    location:    'Milan',
+    address:     'Milan, Italy',
+    coords:      [45.4642, 9.1900],
+    admission:   'Paid',
+    admNote:     'https://combofestival.it',
+    officialUrl: 'https://combofestival.it',
+    studios:     ['games'],
+    unveiling:   ['Allmer Games Showcase'],
+    status:      'upcoming',
+  },
+  {
+    id:          'spielamland',
+    name:        'SPIEL AM LAND',
+    subtitle:    'Pfarrwerfen',
+    city:        'Pfarrwerfen',
+    country:     'Austria',
+    flag:        '🇦🇹',
+    startDate:   new Date(2026, 9, 9, 10, 0),  // Oct 9 10:00
+    endDate:     new Date(2026, 9, 11, 18, 0), // Oct 11 18:00
+    dateLabel:   'October 9–11, 2026',
+    hours:       'Fri–Sun · Check official site for hours',
+    location:    'Pfarrwerfen',
+    address:     'Pfarrwerfen, Austria',
+    coords:      [47.4869, 13.1972],
+    admission:   'Paid',
+    admNote:     'https://spielamland.at',
+    officialUrl: 'https://spielamland.at',
+    studios:     ['games'],
+    unveiling:   ['Allmer Games Showcase'],
+    status:      'upcoming',
+  },
 ];
+
+// ─────────────────────────────────────────────────────────
+// STATUS  (derived from the calendar, not hard-coded)
+// ─────────────────────────────────────────────────────────
+// An event's `status` field above is only a seed — the real status is
+// computed from today's date every load:
+//   · endDate in the past            → 'past'
+//   · soonest event still to come    → 'next'
+//   · any later events               → 'upcoming'
+// Past events are retained as a history, capped at MAX_PAST — once there
+// are more than that, the oldest ones are dropped from the list.
+const MAX_PAST = 5;
+
+function refreshStatuses() {
+  const now = new Date();
+
+  // Chronological order, so the first future event becomes "next".
+  EVENTS.sort((a, b) => a.startDate - b.startDate);
+
+  let nextAssigned = false;
+  EVENTS.forEach(ev => {
+    if (ev.endDate < now) {
+      ev.status = 'past';
+    } else if (!nextAssigned) {
+      ev.status = 'next';
+      nextAssigned = true;
+    } else {
+      ev.status = 'upcoming';
+    }
+  });
+
+  // Keep only the MAX_PAST most recent past events — delete the oldest.
+  // EVENTS is sorted oldest→newest, so the earliest past entries lead.
+  const past = EVENTS.filter(e => e.status === 'past');
+  if (past.length > MAX_PAST) {
+    past.slice(0, past.length - MAX_PAST).forEach(ev => {
+      const i = EVENTS.indexOf(ev);
+      if (i !== -1) EVENTS.splice(i, 1);
+    });
+  }
+}
+refreshStatuses();
 
 // ─────────────────────────────────────────────────────────
 // COUNTDOWN
@@ -975,28 +1076,52 @@ setInterval(updateCountdown, 30000);
 // ─────────────────────────────────────────────────────────
 // SIDEBAR LIST
 // ─────────────────────────────────────────────────────────
+function makeItem(ev) {
+  const item = document.createElement('div');
+  item.className = 'ev-item'
+    + (ev.status === 'next' ? ' is-next' : '')
+    + (ev.status === 'past' ? ' is-past' : '');
+  item.dataset.id = ev.id;
+
+  const pills = ev.studios
+    .map(s => `<span class="studio-pill ${s}">${STUDIO_LABELS[s]}</span>`)
+    .join('');
+
+  const badge = ev.status === 'next'
+    ? '<span class="ev-badge">◆ Next Event</span>'
+    : ev.status === 'past'
+      ? '<span class="ev-badge past">✓ Completed</span>'
+      : '';
+
+  item.innerHTML = `
+    ${badge}
+    <div class="ev-date">${ev.dateLabel}</div>
+    <div class="ev-name">${ev.name}</div>
+    <div class="ev-loc">${ev.city}, ${ev.country}</div>
+    <div class="ev-studios">${pills}</div>
+  `;
+
+  item.addEventListener('click', () => openEvent(ev));
+  return item;
+}
+
 function buildList() {
   const container = document.getElementById('sb-list');
-  EVENTS.forEach(ev => {
-    const item = document.createElement('div');
-    item.className = 'ev-item' + (ev.status === 'next' ? ' is-next' : '');
-    item.dataset.id = ev.id;
+  container.innerHTML = '';
 
-    const pills = ev.studios
-      .map(s => `<span class="studio-pill ${s}">${STUDIO_LABELS[s]}</span>`)
-      .join('');
+  const upcoming = EVENTS.filter(e => e.status !== 'past');
+  const past = EVENTS.filter(e => e.status === 'past')
+                     .sort((a, b) => b.startDate - a.startDate); // newest first
 
-    item.innerHTML = `
-      ${ev.status === 'next' ? '<span class="ev-badge">◆ Next Event</span>' : ''}
-      <div class="ev-date">${ev.dateLabel}</div>
-      <div class="ev-name">${ev.name}</div>
-      <div class="ev-loc">${ev.city}, ${ev.country}</div>
-      <div class="ev-studios">${pills}</div>
-    `;
+  upcoming.forEach(ev => container.appendChild(makeItem(ev)));
 
-    item.addEventListener('click', () => openEvent(ev));
-    container.appendChild(item);
-  });
+  if (past.length) {
+    const hdr = document.createElement('div');
+    hdr.className = 'sb-section-label';
+    hdr.textContent = 'Past Events';
+    container.appendChild(hdr);
+    past.forEach(ev => container.appendChild(makeItem(ev)));
+  }
 }
 buildList();
 
@@ -1084,6 +1209,9 @@ const markerRefs = {};
 EVENTS.forEach(ev => {
   const col   = STUDIO_COLORS[ev.studios[0]];
   const isNext = ev.status === 'next';
+  const isPast = ev.status === 'past';
+  const ringOpacity  = isNext ? 0.55 : isPast ? 0.14 : 0.28;
+  const labelOpacity = isNext ? 0.75 : isPast ? 0.22 : 0.38;
   const glow  = isNext ? `0 0 20px ${col}, 0 0 40px ${col}` : `0 0 12px ${col}`;
 
   const pulseHtml = isNext
@@ -1096,7 +1224,7 @@ EVENTS.forEach(ev => {
                 display:flex;align-items:center;justify-content:center;cursor:pointer;">
       ${pulseHtml}
       <div style="position:absolute;width:28px;height:28px;border-radius:50%;
-                  border:1px solid ${col};opacity:${isNext ? 0.55 : 0.28};"></div>
+                  border:1px solid ${col};opacity:${ringOpacity};"></div>
       <div style="width:10px;height:10px;border-radius:50%;background:${col};
                   box-shadow:${glow};position:relative;z-index:2;"></div>
       <div style="position:absolute;top:37px;left:50%;transform:translateX(-50%);
@@ -1104,7 +1232,7 @@ EVENTS.forEach(ev => {
                   font-family:'Futura','Jost','Century Gothic',sans-serif;
                   font-size:8.5px;font-weight:700;letter-spacing:0.28em;
                   text-transform:uppercase;
-                  color:rgba(255,255,255,${isNext ? 0.75 : 0.38});
+                  color:rgba(255,255,255,${labelOpacity});
                   text-shadow:0 0 10px #000,0 0 5px #000;">
         ${ev.city.toUpperCase()}
       </div>
