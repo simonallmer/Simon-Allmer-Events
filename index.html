@@ -622,8 +622,10 @@
       100% { transform: scale(2.0);  opacity: 0; }
     }
 
+    /* Shift by exactly one dash period (6 + 16 = 22) so the loop is
+       seamless — no snap/reset when it repeats. */
     @keyframes journeyDash {
-      from { stroke-dashoffset: 28; }
+      from { stroke-dashoffset: 22; }
       to   { stroke-dashoffset: 0; }
     }
 
@@ -1203,7 +1205,7 @@ function drawJourney() {
   // Animate the dashes once the SVG path element exists.
   (function animate() {
     if (journeyDash && journeyDash._path) {
-      journeyDash._path.style.animation = 'journeyDash 1.6s linear infinite';
+      journeyDash._path.style.animation = 'journeyDash 2.2s linear infinite';
     } else if (journeyDash) {
       setTimeout(animate, 100);
     }
