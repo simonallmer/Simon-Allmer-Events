@@ -602,17 +602,14 @@
 
     /* ── LEAFLET OVERRIDES ───────────────────────── */
     .leaflet-container { background: #0b0b0b !important; }
-    /* Lift the dark CARTO tiles so land, borders and labels stay legible
-       on dimmer screens, without abandoning the dark theme. */
-    .leaflet-tile { filter: brightness(1.85) contrast(0.92); }
     .leaflet-control-zoom { display: none !important; }
     .leaflet-control-attribution {
       background: rgba(0,0,0,0.55) !important;
-      color: rgba(255,255,255,0.14) !important;
+      color: rgba(255,255,255,0.65) !important;
       font-size: 8px !important;
       letter-spacing: 0.05em !important;
     }
-    .leaflet-control-attribution a { color: rgba(255,255,255,0.18) !important; }
+    .leaflet-control-attribution a { color: rgba(255,255,255,0.8) !important; }
     .leaflet-popup-content-wrapper,
     .leaflet-popup-tip { background: #0a0a0a; color: #fff; }
 
@@ -1149,12 +1146,23 @@ const map = L.map('map', {
   attributionControl: true,
 });
 
+const esriAttribution = 'Tiles © <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, and <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
+
 L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
   {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains:  'abcd',
+    attribution: esriAttribution,
     maxZoom:     19,
+    maxNativeZoom: 16,
+  }
+).addTo(map);
+
+L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution: esriAttribution,
+    maxZoom:     19,
+    maxNativeZoom: 16,
   }
 ).addTo(map);
 
